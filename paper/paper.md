@@ -31,28 +31,23 @@ Briefly describe related software or methods in the field and explain how your w
 Describe the main design choices, architecture, or workflow decisions that shape the software. Focus on meaningful trade-offs and why the chosen approach is appropriate for the research problem.
 
 Root_folder/
-│
-├── readers/
-│   ├── cls.py
-│   ├── aps.py
-│   └── generic.py
-│
-├── metadata/
-│   ├── extract.py
-│   └── validate.py
-│
-├── geometry/
-│   ├── scan-pattern.py
-│   ├── raster.py
-│   └── reconstruct.py
-│
-├── dataset/
-│   └── canonical.py
-│
-└── exporters/
-    ├── netcdf.py
-    ├── geotiff.py
-    └── zarr.py
+  readers/
+    cls.py
+    aps.py
+    generic.py
+  metadata/
+    extract.py
+    validate.py
+  geometry/
+    scan-pattern.py
+    raster.py
+    reconstruct.py
+  dataset/
+    canonical.py
+  exporters/
+    netcdf.py
+    geotiff.py
+    zarr.py
 
 # Research impact
 
