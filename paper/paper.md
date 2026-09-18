@@ -12,6 +12,16 @@ affiliations:
 
 Provide a concise summary of the software and its purpose for a broad, non-specialist audience. Explain what the software does and why it matters in a research context.
 
+Raw beamline data
+        ↓
+Extract scientific metadata
+        ↓
+Resolve acquisition geometry
+        ↓
+Construct canonical spatial-spectral dataset
+        ↓
+Export to interchange format(s)
+
 # Statement of need
 
 Describe the problem that the software addresses and why it is important. Explain who the intended users are and how the software fits into the broader research landscape.
