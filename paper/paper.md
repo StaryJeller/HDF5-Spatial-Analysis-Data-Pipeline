@@ -12,23 +12,13 @@ affiliations:
 
 Provide a concise summary of the software and its purpose for a broad, non-specialist audience. Explain what the software does and why it matters in a research context.
 
-Raw beamline data ->
-Extract scientific metadata ->
-Resolve acquisition geometry ->
-Construct canonical spatial-spectral dataset ->
-Export to interchange format(s)
-
 # Statement of need
 
 Describe the problem that the software addresses and why it is important. Explain who the intended users are and how the software fits into the broader research landscape.
 
-This software intends to address a data preservation and interoperability issue from raw binary metadata and provide a functional data pipeline to parse HDF5 binary attributes, populate an intermediary interchange array, and provide options for data export to preserve underlying spectral information in a specified output. This software would aim to bridge a data interpretation gap between beamline sciences and downstream data analysis.
-
 # State of the field
 
 Briefly describe related software or methods in the field and explain how your work compares to or builds on them. If relevant, explain what gap your project addresses.
-
-Current methods in the field, at least from what I've seen, seem to revolve around very lightweight visual exports and post-process data analysis through simple extraction imagery analysis. By amending this process with a comprehensive metadata preservation parsing toolkit, my expectation is to have a verifiable, archival-quality dataset ready for export into various analytical software tools for extensive spatial data analysis.
 
 # Software design
 
