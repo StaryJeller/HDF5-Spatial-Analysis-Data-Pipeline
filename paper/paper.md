@@ -44,6 +44,16 @@ Root_folder/
     reconstruct.py
   dataset/
     canonical.py
+      data
+      coordinates
+        x
+        y
+      measurements
+        intensity
+      metadata
+        beamline
+        detector
+        scan-pattern
   exporters/
     netcdf.py
     geotiff.py
