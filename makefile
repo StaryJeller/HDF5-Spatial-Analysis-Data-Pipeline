@@ -5,7 +5,7 @@
 #
 # after activating your environment.
 
-PACKAGE = mypackage
+PACKAGE = transform_pipeline
 
 help:
 	@echo ""

@@ -137,3 +137,33 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+#prototypes
+prototype_output/
+*.npy
+
+#generated bloat
+*.egg-info/
+# Python
+.ruff_cache/
+
+# IDE
+.idea/
+
+# Environments
+.venv/
+envs/
+
+# Local scientific playtest data
+Playtest_model/**/*.h5
+Playtest_model/**/*.bin
+Playtest_model/**/prototype_output/
+
+# Generated scientific outputs
+*.npz
+*.tif
+*.tiff
+
+# Temporary repository review files
+REPOSITORY_REVIEW.txt
+HDF5-to-GeoTiff-repo-review.zip

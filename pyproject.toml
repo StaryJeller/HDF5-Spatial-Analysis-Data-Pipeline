@@ -7,27 +7,46 @@
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
+
 [project]
-name = "mypackage"
+name = "hdf5-to-geotiff-data-pipeline"
 version = "0.1.0"
-description = "Starter package for research software projects"
+description = "Reconstruct CLS SGM spectral scans as spatial raster products"
 readme = "README.md"
 requires-python = ">=3.11"
 
+dependencies = [
+    "h5py",
+    "numpy",
+    "Pillow",
+    "tifffile",
+]
+
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+]
+
+
 [tool.setuptools.packages.find]
-include = ["mypackage*"]
+include = ["transform_pipeline*"]
+
 
 [tool.black]
 line-length = 88
 target-version = ["py311", "py312"]
 
+
 [tool.ruff]
 line-length = 88
 target-version = "py311"
 
+
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
 ignore = []
+
 
 [tool.mypy]
 python_version = "3.11"
@@ -36,6 +55,7 @@ warn_unused_configs = true
 disallow_untyped_defs = true
 no_implicit_optional = true
 
+
 [tool.pytest.ini_options]
 addopts = "-ra"
-testpaths = ["mypackage/tests"]
+testpaths = ["tests"]
