@@ -1,237 +1,1640 @@
-# Scientific Software Starter Template
+# HDF5-to-GeoTIFF Data Pipeline
 
-Starter repository for research teams and students who are new to software engineering.
+A reproducible Python pipeline for reconstructing spatial raster products from Canadian Light Source SGM fly-scan acquisitions that store stage coordinates in HDF5 and spectral detector counts in separate SDD binary files.
 
-This template helps you create a research-code repository that is:
+> **Current implementation status**
+>
+> The validated prototype reads one HDF5 coordinate file and one SDD detector binary, reconstructs the serpentine raster, measures row-dependent bidirectional displacement, applies an anchored subpixel correction to the full spectral cube, and exports quantitative TIFF/NumPy products.
+>
+> Despite the repository name, **validated GeoTIFF export is not implemented yet**. The current TIFF product is a locally referenced analytical raster. The X and Y scan axes are exported separately as NumPy arrays.
 
-- Safe: simple checks catch common mistakes early.
-- Portable: uses a shared Conda environment where practical.
-- Reproducible: records dependencies and repeatable commands.
-- Robust: tests first, then optional quality tools as you grow.
-- Literate: optional API docs and notebooks for explainable workflows.
-- Low overhead: use only the tools that fit your current needs.
+---
 
-## Create Your Project Repository on GitHub
+## Table of contents
 
-Start a new project from this template; do not fork it or work directly in the template repository. A repository created from a template is your own independent project, with its own commits and history.
+1. [Purpose](#purpose)
+2. [What the pipeline currently does](#what-the-pipeline-currently-does)
+3. [What the pipeline does not yet do](#what-the-pipeline-does-not-yet-do)
+4. [Scientific and data assumptions](#scientific-and-data-assumptions)
+5. [Repository layout](#repository-layout)
+6. [Input data contract](#input-data-contract)
+7. [Installation](#installation)
+8. [Quick start with the playtest model](#quick-start-with-the-playtest-model)
+9. [Run another scan](#run-another-scan)
+10. [Command-line reference](#command-line-reference)
+11. [Output products](#output-products)
+12. [How reconstruction works](#how-reconstruction-works)
+13. [How subpixel registration works](#how-subpixel-registration-works)
+14. [How to verify a run](#how-to-verify-a-run)
+15. [Use from Python](#use-from-python)
+16. [Troubleshooting](#troubleshooting)
+17. [Tests](#tests)
+18. [Development diagnostics](#development-diagnostics)
+19. [Data management and Git](#data-management-and-git)
+20. [Known limitations](#known-limitations)
+21. [Roadmap](#roadmap)
+22. [Reproducibility record](#reproducibility-record)
+23. [Citation and acknowledgement](#citation-and-acknowledgement)
+24. [License](#license)
 
-1. On the GitHub page for this template, select **Use this template**, then **Create a new repository**.
-2. Choose the account or organization that should own the project.
-3. Give the repository a clear name, such as `soil-analysis`, add a short description, and choose the visibility appropriate for your project and data-sharing requirements.
-4. Select **Create repository from template**.
-5. Clone your new repository to your computer using GitHub Desktop or the repository's **Code** button. From a terminal, the pattern is:
+---
 
-   ```bash
-   git clone https://github.com/YOUR-ACCOUNT/YOUR-REPOSITORY.git
-   cd YOUR-REPOSITORY
-   ```
+## Purpose
 
-If you do not see **Use this template**, ask the instructor or repository owner to enable the repository's template setting. GitHub's [guide to creating a repository from a template](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template) includes screenshots and current interface details.
+CLS SGM acquisitions can distribute information required for a single spatial image across several files:
 
-## Start Here
+- an HDF5 file containing chronological X and Y sample coordinates;
+- one or more SDD binary detector files containing a spectrum for every acquired position;
+- an MCC flyer CSV containing auxiliary channels and acquisition information.
 
-Follow these steps in order. You do not need to read every file in this repository.
+The objective of this package is to convert those acquisition-level files into explicit, inspectable spatial products while preserving the detector-channel dimension and documenting every geometric correction.
 
-1. Choose a project/package name and follow the [rename `mypackage` guide](guides/template-customization.md#rename-mypackage-your-first-customization). For example, `soil_analysis` is a clearer name than the starter name `mypackage`.
-2. Create the environment if you want to use the provided Conda and Make workflow:
+The current processing path is:
 
-   ```bash
-   make init
-   ```
-
-   The `make` commands are optional convenience commands; you can run the underlying tools directly instead. On Windows, `make` is not included by default. Installing `m2-base` in Conda often supplies it:
-
-   ```bash
-   conda install m2-base
-   ```
-
-3. Try the starter test when you are ready:
-
-   ```bash
-   make test
-   ```
-
-4. Open [00_START_HERE.ipynb](00_START_HERE.ipynb) if you prefer a guided notebook walkthrough.
-
-## Where to Go Next
-
-Use this README as your home base. Open another document only when it matches your current task.
-
-## Paper and Proposal Scaffold
-
-When you are ready to prepare a project proposal or a final manuscript for a JOSS-style submission, start with the scaffold in [paper/proposal.md](paper/proposal.md), [paper/paper.md](paper/paper.md), and [paper/paper.bib](paper/paper.bib). These files provide a simple starting point for the proposal and manuscript workflow and can be expanded as the project matures.
-
-| If you want to… | Go to… |
-|---|---|
-| Rename the starter package, understand a file, or decide whether to remove one | [Template Customization Guide](guides/template-customization.md) |
-| Start a project proposal or JOSS-style manuscript | [Paper and Proposal Scaffold](#paper-and-proposal-scaffold) |
-| Write your first function and test | [What to Edit First](#what-to-edit-first) below |
-| Learn about or enable a tool | [Tool Overview](#tool-overview) below |
-| Use AI responsibly with code or research materials | [Research Software AI Policy](guides/ai-policy.md) |
-| Share work through GitHub or pull requests | [Sharing Changes](#sharing-changes-optional) below |
-| Publish API documentation | [API Docs Quick Start](#api-docs-quick-start-pdoc) below |
-
-The AI configuration files (`AGENTS.md`, `.cursorrules`, `CLAUDE.md`, `GEMINI.md`, and GitHub's Copilot instructions) work in the background for the tools that use them. Students do not need to read or edit them to start a project. If you use AI, read the policy linked above before sharing research materials with an external tool.
-
-## What to Edit First
-
-1. Follow the [rename `mypackage` guide](guides/template-customization.md#rename-mypackage-your-first-customization) to choose and configure your project package name.
-2. Replace [mypackage/example.py](mypackage/example.py) with your own module(s).
-3. Update tests in [mypackage/tests/test_pytest.py](mypackage/tests/test_pytest.py).
-4. Update this README with project goals, install instructions, and examples.
-
-The test file already includes starter templates with short comments for:
-
-- import/smoke tests
-- fixtures
-- parameterized tests
-- exception tests
-- regression tests
-
-To get started writing your own tests, try this quick checklist:
-
-1. Pick one function and write 3-5 known input/output examples.
-2. Add one edge case (like zero, empty input, or boundary value).
-3. Add one invalid input test with `pytest.raises(...)`.
-4. Run `make test` and iterate.
-
-More unit testing tutorials:
-
-- Pytest getting started: https://docs.pytest.org/en/stable/getting-started.html
-- Pytest examples: https://docs.pytest.org/en/stable/example/index.html
-- Pytest good practices: https://docs.pytest.org/en/stable/explanation/goodpractices.html
-- Python testing tutorial (Real Python): https://realpython.com/python-testing/
-
-## Tool Overview
-
-Use the tools you need, when you need them.
-
-### Quick Definitions for Beginners
-
-- Environment: A self-contained software workspace with a specific Python version and package list. It helps everyone run the same code with fewer "it works on my machine" problems.
-- Unit test: A small automatic check for one behavior in your code.
-- Linting: Automatic feedback about code quality and common mistakes.
-- Type checking: Automatic checks that function inputs/outputs match expected types.
-- CI (continuous integration): Cloud automation that runs checks after push/pull request.
-- make test: Runs the automated tests for this project.
-
-| Tool | What it helps with | How to run here | Files used in this repo | Learn more |
-|---|---|---|---|---|
-| Conda | Creates the software environment so everyone uses the same Python and packages. | `make init` | [environment.yml](environment.yml) | https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html |
-| Pytest | Runs unit tests to check whether your code behavior is correct. | `make test` | [mypackage/tests/test_pytest.py](mypackage/tests/test_pytest.py), [pyproject.toml](pyproject.toml) | https://docs.pytest.org/en/stable/getting-started.html |
-| Black | Rewrites code formatting automatically so style is consistent. | `make format` | [pyproject.toml](pyproject.toml) | https://black.readthedocs.io/en/stable/getting_started.html |
-| Ruff | Finds common bugs/style issues quickly (linting). | `make lint` | [pyproject.toml](pyproject.toml) | https://docs.astral.sh/ruff/tutorial/ |
-| MyPy | Checks type hints for mismatches before runtime errors occur. | `make type` | [pyproject.toml](pyproject.toml) | https://mypy.readthedocs.io/en/stable/getting_started.html |
-| Pydocstyle | Checks whether docstrings follow a consistent style. | `make doclint` | [makefile](makefile) | https://www.pydocstyle.org/en/stable/ |
-| pip-audit | Checks dependencies for known security vulnerabilities. | `make audit` | [makefile](makefile), [environment.yml](environment.yml) | https://pypi.org/project/pip-audit/ |
-| detect-secrets | Scans code for accidentally committed secrets. | `make secrets` | [.pre-commit-config.yaml](.pre-commit-config.yaml), [.secrets.baseline](.secrets.baseline) | https://github.com/Yelp/detect-secrets |
-| nbstripout | Removes notebook output and noisy metadata before commit. | `make nb-clean` | [.pre-commit-config.yaml](.pre-commit-config.yaml) | https://github.com/kynan/nbstripout |
-| Pdoc | Builds simple API documentation pages from docstrings. | `make docs` | [makefile](makefile) | https://pdoc.dev/docs/pdoc.html |
-| Pre-commit | Runs chosen checks before commit so issues are caught early. | `conda run --prefix ./.envs pre-commit run --all-files` | [.pre-commit-config.yaml](.pre-commit-config.yaml) | https://pre-commit.com/ |
-| GitHub Actions | Runs checks in the cloud after push/pull request (CI), including Python 3.11 and 3.12 matrix testing. | Automatic on GitHub | [.github/workflows/ci.yml](.github/workflows/ci.yml) | https://docs.github.com/actions/quickstart |
-| Dependabot | Opens scheduled dependency update PRs for GitHub Actions and Python metadata. | Automatic on GitHub | [.github/dependabot.yml](.github/dependabot.yml) | https://docs.github.com/code-security/dependabot |
-| JupyterLab | Lets you run notebook cells interactively for exploration and demos. | `conda run --prefix ./envs jupyter lab` | [00_START_HERE.ipynb](00_START_HERE.ipynb) | https://jupyterlab.readthedocs.io/en/stable/getting_started/overview.html |
-
-## API Docs Quick Start (pdoc)
-
-If you add clear docstrings, pdoc can turn them into browsable HTML docs quickly.
-
-Try:
-
-```bash
-make init
-make docs
+```text
+HDF5 coordinate arrays + one SDD binary
+                    |
+                    v
+validate observation counts and raster geometry
+                    |
+                    v
+reshape chronological spectra into raster rows
+                    |
+                    v
+reverse alternating serpentine rows
+                    |
+                    v
+measure odd-row displacement against even-row anchors
+                    |
+                    v
+smooth the row-dependent fractional-shift profile
+                    |
+                    v
+apply subpixel X registration to all 256 channels
+                    |
+                    v
+export total-count raster, spectral cubes, axes, mask, and shift table
 ```
 
-Docstring features already demonstrated in [mypackage/example.py](mypackage/example.py):
+The package is designed so that acquisition reading, raster reconstruction, registration, and output writing remain separate and reusable.
 
-- `Args`, `Returns`, and `Raises` sections
-- `Examples` that readers can copy/paste
-- `Notes` and `See Also` sections
+---
 
-Publishing tutorial:
+## What the pipeline currently does
 
-- [GitHub Pages tutorial](guides/github-pages.md)
-- Automated workflow: [.github/workflows/pages.yml](.github/workflows/pages.yml)
-- pdoc docs: https://pdoc.dev/docs/pdoc.html
-- GitHub Pages docs: https://docs.github.com/pages/getting-started-with-github-pages/creating-a-github-pages-site
+The validated prototype performs the following operations:
 
-To enable automatic publication, set GitHub Pages source to GitHub Actions in repository settings.
+- Locates one HDF5 file in a scan directory, or accepts an explicitly selected HDF5 filename.
+- Reads coordinate arrays from:
 
-## Typical Workflow
+  ```text
+  /hexapod_waves/x
+  /hexapod_waves/y
+  ```
 
-```bash
-make test         # optional
+- Detects raster-row boundaries from changes in Y.
+- Verifies that every inferred row has the same number of observations.
+- Verifies that Y is constant within each raster row.
+- Verifies that Y increases monotonically between rows.
+- Verifies alternating X direction consistent with serpentine acquisition.
+- Reads one SDD binary as little-endian unsigned 32-bit integers.
+- Assumes 256 detector channels per spatial observation.
+- Verifies that the SDD value count matches:
 
-# other tools you can run when useful:
-make format
-make lint
-make type
-make audit
-make secrets
-make check-full
+  ```text
+  rows × columns × 256
+  ```
+
+- Reshapes chronological detector values to:
+
+  ```text
+  (Y rows, X columns, detector channels)
+  ```
+
+- Reverses alternating rows so every output row uses increasing X order.
+- Constructs a total-count image by summing the 256 detector channels.
+- Measures fractional horizontal displacement for interior odd rows.
+- Keeps even rows as fixed spatial anchors.
+- Smooths the measured odd-row shift profile along Y.
+- Applies the smoothed shift to all 256 detector channels using linear X interpolation.
+- Uses no circular wrapping.
+- Marks pixels outside the valid source extent as invalid.
+- Exports quantitative and display products.
+
+---
+
+## What the pipeline does not yet do
+
+The following are not part of the validated production path:
+
+- combining `sdd1_0.bin` through `sdd4_0.bin`;
+- detector dead-time correction;
+- detector energy-channel calibration;
+- spectral ROI selection;
+- I0 normalization;
+- MCC channel identification or normalization;
+- background subtraction;
+- scan stitching or quadrant mosaicking;
+- conversion of local scan coordinates to a defined coordinate reference system;
+- validated GeoTIFF export;
+- NXstxm export;
+- PyMca-compatible NeXus output;
+- XANES stack analysis;
+- PCA or clustering;
+- automated quality-control acceptance criteria;
+- support for arbitrary SDD channel counts or alternate binary dtypes without explicit configuration.
+
+A placeholder GeoTIFF writer intentionally raises `NotImplementedError` rather than producing an apparently georeferenced file without a scientifically validated spatial-reference model.
+
+---
+
+## Scientific and data assumptions
+
+The current prototype depends on the assumptions below. A run should not be considered scientifically valid if these assumptions do not hold.
+
+### Coordinate assumptions
+
+- X and Y are one-dimensional chronological arrays.
+- X and Y have identical lengths.
+- Y is constant within each raster line.
+- Y increases from one raster line to the next.
+- Raster rows have equal observation counts.
+- X alternates between strictly increasing and strictly decreasing rows.
+- After reversing odd rows, every raster line shares the same X grid.
+- Coordinates are local scan coordinates, not yet a projected or geographic coordinate reference system.
+
+### Detector assumptions
+
+- The selected binary belongs to the selected HDF5 acquisition.
+- Detector values are little-endian unsigned 32-bit integers:
+
+  ```python
+  dtype = "<u4"
+  ```
+
+- Every spatial observation contains exactly 256 detector-channel values.
+- The binary contains no undocumented header, footer, padding, flyback records, or extra observations.
+- Detector spectra appear in the same chronological order as the X/Y coordinates.
+
+### Registration assumptions
+
+- Even rows provide a suitable fixed reference.
+- Odd-row displacement is predominantly horizontal along X.
+- An odd row can be compared with the mean of the even rows immediately above and below.
+- The row-displacement field changes smoothly along Y.
+- Linear interpolation is acceptable for the current prototype.
+- Edge pixels that cannot be interpolated from acquired samples must be marked invalid rather than wrapped or invented.
+
+---
+
+## Repository layout
+
+```text
+HDF5-to-GeoTiff-Data-Pipeline/
+├── transform_pipeline/
+│   ├── __init__.py
+│   ├── cli.py
+│   ├── example.py
+│   ├── pipeline.py
+│   ├── core/
+│   │   ├── __init__.py
+│   │   └── models.py
+│   ├── io/
+│   │   ├── __init__.py
+│   │   ├── readers/
+│   │   │   ├── __init__.py
+│   │   │   └── cls_sgm.py
+│   │   └── writers/
+│   │       ├── __init__.py
+│   │       ├── geotiff.py
+│   │       └── tiff.py
+│   └── transforms/
+│       ├── __init__.py
+│       ├── normalize.py
+│       ├── raster.py
+│       └── registration.py
+├── tests/
+│   ├── __init__.py
+│   ├── test_core.py
+│   └── test_paths.py
+├── development/
+│   └── diagnostics/
+│       ├── README.md
+│       ├── sdd1_0_diagnostic.txt
+│       ├── sdd1_row_shift_diagnostic.py
+│       ├── sdd1_subpixel_row_shift_diagnostic.py
+│       └── xy_raster_geometry_diag.py
+├── Playtest_model/
+│   └── Testmodel_NCo_7_SW/
+├── paper/
+├── guides/
+├── pyproject.toml
+├── requirements.txt
+├── makefile
+├── LICENSE
+└── README.md
 ```
 
-## Sharing Changes (Optional)
+### Module responsibilities
 
-If students are using branches and pull requests, keep this simple:
+#### `transform_pipeline/core/models.py`
 
-1. Create/update environment:
+Contains shared dataclasses used to pass structured results between processing stages:
 
-	```bash
-	make init
-	```
+- `RasterGeometry`
+- `ShiftMeasurement`
+- `ReconstructionResult`
+- `RegistrationResult`
 
-2. Run checks before sharing (if your team uses them):
+#### `transform_pipeline/io/readers/cls_sgm.py`
 
-	```bash
-	make test
-	```
+Handles CLS SGM input discovery and decoding:
 
-3. If advanced tools are enabled in your course, run:
+- repository-root resolution;
+- default playtest-directory resolution;
+- HDF5 discovery;
+- coordinate reading;
+- SDD binary reading;
+- initial cube reconstruction.
 
-	```bash
-	make check-full
-	```
+#### `transform_pipeline/transforms/raster.py`
 
-## Is CI Helpful?
+Handles spatial organization:
 
-Yes, when kept minimal. This template runs tests in CI (`make test`) so students get value without heavy setup burden.
+- serpentine-row reversal;
+- raster-geometry inference;
+- coordinate-grid validation.
 
-Progressive unlock option:
+#### `transform_pipeline/transforms/registration.py`
 
-- The CI workflow in [.github/workflows/ci.yml](.github/workflows/ci.yml) includes commented lines for `make lint`, `make type`, and `make doclint`.
-- Keep them commented for beginner classes.
-- Uncomment one line at a time as students are ready.
+Handles row alignment:
 
-## Beginner Guidance
+- correlation scoring;
+- subpixel peak refinement;
+- weighted smoothing;
+- spectral-row interpolation;
+- application of the odd-row shift profile.
 
-- Start with `make init`, then try whichever `make` commands are helpful.
-- Add optional tools only after your team sees recurring problems they can solve.
-- Prefer consistency over complexity. A small workflow used every week is better than a large workflow used rarely.
+#### `transform_pipeline/io/writers/tiff.py`
 
-## Notes for Reproducibility
+Handles output serialization:
 
-- Keep `environment.yml` updated as tooling needs evolve.
-- Add random seeds for stochastic experiments.
-- Record key parameters and software versions in outputs.
-- Avoid hidden local state and relative paths outside repo root.
-- Prefer relative paths in code and notebooks (avoid machine-specific absolute paths).
-- Avoid hard-coded algorithm settings when possible; use function arguments and sensible defaults.
+- quantitative float TIFF;
+- validity-mask TIFF;
+- 8-bit preview generation;
+- PNG preview;
+- shift CSV.
 
-## Repository Habits (Consistency Add-On)
+#### `transform_pipeline/pipeline.py`
 
-These are selected practices aligned with the course-level repository rules:
+Coordinates the production workflow through two high-level functions:
 
-- Keep repositories text-first when possible: code, Markdown, and config files are preferred over frequently changing binary files.
-- Use `.gitignore` intentionally and review what is staged before each commit.
-- Avoid storing raw/input/intermediate/output datasets directly in the code repository; document how to fetch or mount data instead.
-- Keep interfaces layered: library/API first, command-line tools second, and GUI work last.
-- Favor modular design and avoid copy/paste duplication across code and docs.
-- Keep README as the onboarding entry point: install, run, and validate in as few steps as possible.
-- For notebooks, include a top Markdown title/description cell and clear outputs before commit when practical.
-- If AI/LLM tools contribute meaningfully, note usage briefly in commit messages (for example: `LLM: drafted initial test cases, then simplified manually`).
+```python
+process_sdd_scan(...)
+write_pipeline_outputs(...)
+```
 
-Full reference:
+#### `transform_pipeline/cli.py`
 
-- [Rules for Repos](https://colbrydi.github.io/Research_guidelines/Rules_for_Repos.html)
+Provides the command-line interface.
+
+#### `development/diagnostics/`
+
+Contains exploratory scripts retained for provenance and debugging. These files are not imported by the production package.
+
+---
+
+## Input data contract
+
+## Minimum scan-directory contents
+
+A processable scan directory must contain:
+
+```text
+scan_directory/
+├── one_file.h5
+└── sdd1_0.bin
+```
+
+If more than one `.h5` file is present, use `--h5` to select the intended file.
+
+The detector filename may be changed with `--sdd`.
+
+### Typical CLS scan bundle
+
+The repository playtest model uses the following bundle:
+
+```text
+Playtest_model/
+└── Testmodel_NCo_7_SW/
+    ├── NCo_7_SW_2026-05-09_150721_0.00eV.h5
+    ├── mcc_flyer_0.csv
+    ├── sdd1_0.bin
+    ├── sdd2_0.bin
+    ├── sdd3_0.bin
+    └── sdd4_0.bin
+```
+
+The current default run processes only:
+
+```text
+NCo_7_SW_2026-05-09_150721_0.00eV.h5
+sdd1_0.bin
+```
+
+The MCC CSV and SDD2-SDD4 files are retained for future development but are not used in the present production path.
+
+### HDF5 requirements
+
+The HDF5 file must expose readable datasets at:
+
+```text
+/hexapod_waves/x
+/hexapod_waves/y
+```
+
+Both datasets must:
+
+- be one-dimensional;
+- have the same length;
+- describe the chronological acquisition sequence.
+
+### SDD requirements
+
+The selected binary must match:
+
+```text
+number of coordinate observations × 256 channels × 4 bytes
+```
+
+For the validated playtest:
+
+```text
+raster rows:       301
+samples per row:   302
+spatial samples:   90,902
+channels:          256
+cube shape:        (301, 302, 256)
+```
+
+These dimensions are inferred and validated. They are not hard-coded into the production reader.
+
+---
+
+## Installation
+
+## Supported Python
+
+The project metadata requires:
+
+```text
+Python >= 3.11
+```
+
+The current Windows playtest was validated with:
+
+```text
+Python 3.14
+```
+
+Use one Python interpreter consistently for environment creation, installation, testing, and execution.
+
+### Windows PowerShell installation
+
+From the repository root:
+
+```powershell
+py -3.14 -m venv .venv
+```
+
+Activate the environment:
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+Upgrade pip:
+
+```powershell
+python -m pip install --upgrade pip
+```
+
+Install the package and test dependencies in editable mode:
+
+```powershell
+python -m pip install -e ".[test]"
+```
+
+Verify the interpreter:
+
+```powershell
+python --version
+python -m pip --version
+```
+
+Verify that Python imports the repository package:
+
+```powershell
+python -c "import transform_pipeline; print(transform_pipeline.__file__)"
+```
+
+The printed path should end with:
+
+```text
+HDF5-to-GeoTiff-Data-Pipeline\transform_pipeline\__init__.py
+```
+
+### Installation without activating the environment
+
+You can call the environment interpreter explicitly:
+
+```powershell
+.venv\Scripts\python.exe -m pip install -e ".[test]"
+```
+
+Then run commands with:
+
+```powershell
+.venv\Scripts\python.exe -m pytest -q
+.venv\Scripts\python.exe -m transform_pipeline.cli
+```
+
+### Dependency files
+
+- `pyproject.toml` defines package metadata, runtime dependencies, optional test dependencies, package discovery, and tool configuration.
+- `requirements.txt` provides a simple dependency list.
+- `environment.yml` is inherited repository infrastructure and may not match the Python 3.14 local environment exactly.
+
+For the validated Windows workflow, editable pip installation from `pyproject.toml` is the authoritative setup route.
+
+---
+
+## Quick start with the playtest model
+
+The command-line interface resolves the playtest directory relative to the repository root:
+
+```text
+Playtest_model/Testmodel_NCo_7_SW
+```
+
+No machine-specific absolute path is required.
+
+From the repository root, run:
+
+```powershell
+python -m transform_pipeline.cli
+```
+
+The default run:
+
+- uses the repository playtest directory;
+- selects `sdd1_0.bin`;
+- locates the single HDF5 file automatically;
+- creates or updates `prototype_output` inside the scan directory;
+- does not save the two full spectral cubes unless requested.
+
+To save both the reconstructed and registered spectral cubes:
+
+```powershell
+python -m transform_pipeline.cli --save-cubes
+```
+
+Expected terminal completion message:
+
+```text
+Pipeline complete. Output: ...\Playtest_model\Testmodel_NCo_7_SW\prototype_output
+```
+
+---
+
+## Run another scan
+
+### Use another scan directory
+
+```powershell
+python -m transform_pipeline.cli `
+    "D:\path\to\scan_directory"
+```
+
+### Select another SDD file
+
+```powershell
+python -m transform_pipeline.cli `
+    "D:\path\to\scan_directory" `
+    --sdd "sdd2_0.bin"
+```
+
+This changes only the detector file. The selected binary must still satisfy the current `<u4`, 256-channel assumptions.
+
+### Select an HDF5 file explicitly
+
+Use this when the scan directory contains more than one `.h5` file:
+
+```powershell
+python -m transform_pipeline.cli `
+    "D:\path\to\scan_directory" `
+    --h5 "selected_scan.h5"
+```
+
+### Select both HDF5 and SDD files
+
+```powershell
+python -m transform_pipeline.cli `
+    "D:\path\to\scan_directory" `
+    --h5 "selected_scan.h5" `
+    --sdd "sdd1_0.bin"
+```
+
+### Choose a separate output directory
+
+```powershell
+python -m transform_pipeline.cli `
+    "D:\path\to\scan_directory" `
+    --output-dir "D:\path\to\output_directory"
+```
+
+### Save full cubes
+
+```powershell
+python -m transform_pipeline.cli `
+    "D:\path\to\scan_directory" `
+    --save-cubes
+```
+
+Full cubes can be large. Omit `--save-cubes` when only the registered total-count image, axes, mask, shift table, and preview are needed.
+
+---
+
+## Command-line reference
+
+General syntax:
+
+```text
+python -m transform_pipeline.cli [scan_dir] [options]
+```
+
+### Positional argument
+
+#### `scan_dir`
+
+Optional path to a CLS SGM scan directory.
+
+If omitted, the CLI uses:
+
+```text
+<repository root>/Playtest_model/Testmodel_NCo_7_SW
+```
+
+### Options
+
+#### `--h5 FILENAME`
+
+Select a specific HDF5 filename within `scan_dir`.
+
+Use this when more than one `.h5` file exists.
+
+#### `--sdd FILENAME`
+
+Select an SDD binary filename within `scan_dir`.
+
+Default:
+
+```text
+sdd1_0.bin
+```
+
+#### `--output-dir PATH`
+
+Write outputs to a custom directory.
+
+Default:
+
+```text
+scan_dir/prototype_output
+```
+
+#### `--save-cubes`
+
+Save both full `(Y, X, 256)` spectral cubes.
+
+Without this option, the pipeline still performs registration in memory and writes the total-count output, axes, mask, and shift table.
+
+### Display CLI help
+
+```powershell
+python -m transform_pipeline.cli --help
+```
+
+---
+
+## Output products
+
+Default output directory:
+
+```text
+scan_directory/
+└── prototype_output/
+```
+
+Standard outputs:
+
+```text
+prototype_output/
+├── total_counts_subpixel_registered.npy
+├── total_counts_subpixel_registered_float32.tif
+├── total_counts_subpixel_registered_preview.png
+├── subpixel_validity_mask.tif
+├── subpixel_shifts.csv
+├── x_axis.npy
+└── y_axis.npy
+```
+
+Additional outputs created with `--save-cubes`:
+
+```text
+prototype_output/
+├── sdd_cube_reconstructed.npy
+└── sdd_cube_subpixel_registered.npy
+```
+
+### `total_counts_subpixel_registered.npy`
+
+Purpose:
+
+- primary NumPy total-count raster after registration.
+
+Shape:
+
+```text
+(Y rows, X columns)
+```
+
+Data characteristics:
+
+- floating-point output;
+- summed across all 256 detector channels;
+- invalid shifted-edge pixels represented as `NaN`.
+
+Recommended use:
+
+- quantitative Python analysis;
+- downstream masking;
+- comparison with the validity mask;
+- conversion to other analytical formats.
+
+### `total_counts_subpixel_registered_float32.tif`
+
+Purpose:
+
+- quantitative floating-point TIFF representation of the registered total-count raster.
+
+Data characteristics:
+
+- `float32`;
+- no display rescaling applied to the quantitative values;
+- invalid edge pixels remain `NaN`.
+
+Recommended use:
+
+- ImageJ/Fiji or other scientific-image software that supports floating TIFF;
+- quantitative raster inspection;
+- downstream format conversion.
+
+Do not interpret an all-white initial display as a constant image. Some general-purpose viewers do not automatically scale floating-point TIFF values.
+
+### `total_counts_subpixel_registered_preview.png`
+
+Purpose:
+
+- quick visual verification.
+
+Data characteristics:
+
+- 8-bit grayscale;
+- percentile-stretched;
+- invalid pixels displayed as black;
+- display-only.
+
+Do not use this PNG for quantitative analysis.
+
+### `subpixel_validity_mask.tif`
+
+Purpose:
+
+- identifies pixels supported by acquired detector samples after interpolation.
+
+Values:
+
+```text
+255 = valid
+0   = invalid
+```
+
+Invalid pixels occur at the horizontal edge exposed when a row is shifted. The pipeline does not wrap data from the opposite edge.
+
+### `subpixel_shifts.csv`
+
+Purpose:
+
+- records the estimated and applied row-registration model.
+
+Columns:
+
+```text
+row
+raw_fractional_shift
+smoothed_fractional_shift
+peak_correlation
+zero_shift_correlation
+correlation_gain
+```
+
+Interpretation:
+
+- `row`: zero-based raster-row index;
+- `raw_fractional_shift`: individual optimal odd-row estimate;
+- `smoothed_fractional_shift`: shift used by the registration stage;
+- `peak_correlation`: correlation after the best measured shift;
+- `zero_shift_correlation`: correlation without horizontal correction;
+- `correlation_gain`: improvement relative to zero shift.
+
+Positive shift means odd-row content moves right. Negative shift means odd-row content moves left.
+
+### `x_axis.npy`
+
+Purpose:
+
+- reconstructed increasing-X coordinate axis.
+
+Expected shape:
+
+```text
+(X columns,)
+```
+
+### `y_axis.npy`
+
+Purpose:
+
+- reconstructed increasing-Y coordinate axis.
+
+Expected shape:
+
+```text
+(Y rows,)
+```
+
+### `sdd_cube_reconstructed.npy`
+
+Created only with `--save-cubes`.
+
+Purpose:
+
+- spectral cube after chronological reshape and serpentine correction, before subpixel registration.
+
+Shape:
+
+```text
+(Y rows, X columns, 256 channels)
+```
+
+### `sdd_cube_subpixel_registered.npy`
+
+Created only with `--save-cubes`.
+
+Purpose:
+
+- full spectral cube after applying the smoothed odd-row shift profile.
+
+Shape:
+
+```text
+(Y rows, X columns, 256 channels)
+```
+
+Data characteristics:
+
+- `float32` because fractional interpolation creates noninteger values;
+- even rows remain fixed;
+- odd rows are linearly interpolated along X;
+- invalid edges are `NaN` across all channels.
+
+---
+
+## How reconstruction works
+
+## 1. Read chronological coordinates
+
+The reader loads:
+
+```python
+x = h5["/hexapod_waves/x"][:]
+y = h5["/hexapod_waves/y"][:]
+```
+
+The arrays describe acquisition order, not yet a conventional spatial image.
+
+## 2. Detect raster-row boundaries
+
+A row boundary is inferred when consecutive Y values differ beyond the configured tolerance.
+
+The resulting row lengths must be uniform.
+
+## 3. Validate the serpentine pattern
+
+For the validated scan, acquisition follows:
+
+```text
+row 0: X increasing
+row 1: X decreasing
+row 2: X increasing
+row 3: X decreasing
+...
+```
+
+Y increases between rows.
+
+## 4. Read detector spectra
+
+The selected SDD binary is read as:
+
+```python
+np.dtype("<u4")
+```
+
+The flat value count must equal:
+
+```text
+rows × columns × 256
+```
+
+## 5. Reshape chronological spectra
+
+The flat binary becomes:
+
+```text
+(rows, columns, 256)
+```
+
+At this stage, odd rows still follow reverse acquisition direction.
+
+## 6. De-serpentine
+
+Odd rows are reversed along X:
+
+```text
+raw chronological odd row:    right -> left
+spatial output odd row:        left  -> right
+```
+
+Every output row then shares the same increasing-X orientation.
+
+## 7. Create the total-count image
+
+The preview registration signal is formed by summing detector channels:
+
+```python
+total_counts = cube.sum(axis=2)
+```
+
+This does not remove the channel dimension from the saved cube. It creates a two-dimensional signal used for alignment and total-count output.
+
+---
+
+## How subpixel registration works
+
+The need for registration arose because de-serpentining corrected row direction but left a row-dependent horizontal displacement. Integer shifting was insufficient because the optimal displacement varied smoothly from positive at one end of the image, through approximately zero near the center, to negative at the other end.
+
+### Anchor model
+
+- Even rows are fixed.
+- Interior odd rows are the moving rows.
+- An odd row is compared with the average of the even rows directly above and below.
+
+For odd row `r`:
+
+```text
+reference(r) = 0.5 × [row(r - 1) + row(r + 1)]
+```
+
+### Candidate-shift search
+
+The current defaults search:
+
+```text
+minimum shift:  -2.0 pixels
+maximum shift:  +2.0 pixels
+step:            0.025 pixel
+```
+
+For each candidate shift:
+
+1. the odd-row total-count signal is linearly interpolated;
+2. edge margins are excluded from scoring;
+3. Pearson correlation with the reference is calculated.
+
+### Peak refinement
+
+The best grid location is refined with a local three-point quadratic estimate to produce a fractional shift finer than the initial search grid.
+
+### Smoothing
+
+Individual row estimates can be affected by texture and count variation. The raw odd-row profile is therefore smoothed along Y using correlation-gain-weighted Gaussian smoothing.
+
+The current defaults use:
+
+```text
+Gaussian sigma:          5 odd-row samples
+minimum smoothing weight: 0.0005
+```
+
+### Spectral application
+
+The smoothed shift is applied to every one of the 256 detector channels for that odd row.
+
+For destination X position `x` and shift `s`:
+
+```text
+source position = x - s
+```
+
+Linear interpolation is performed between neighboring source columns.
+
+### Boundary treatment
+
+If a shifted destination pixel requires a source position outside the acquired row:
+
+- the output is set to `NaN`;
+- the validity mask is set to invalid;
+- no circular wrapping is used;
+- no edge value is fabricated.
+
+---
+
+## How to verify a run
+
+Do not rely on the presence of files alone. Use the checks below.
+
+### 1. Confirm terminal completion
+
+The CLI should end with a message containing:
+
+```text
+Pipeline complete.
+```
+
+### 2. Inspect the preview
+
+Open:
+
+```text
+total_counts_subpixel_registered_preview.png
+```
+
+Check for:
+
+- recognizable sample structure;
+- correct left-to-right orientation;
+- absence of alternating full-row reversal;
+- reduced row zig-zagging;
+- no circularly wrapped edge content.
+
+### 3. Inspect the quantitative TIFF
+
+Open:
+
+```text
+total_counts_subpixel_registered_float32.tif
+```
+
+Use a scientific viewer and apply a display range if necessary.
+
+### 4. Inspect the mask
+
+Open:
+
+```text
+subpixel_validity_mask.tif
+```
+
+Most pixels should be valid. Invalid pixels should occur only at the horizontal edge exposed by the corresponding fractional shift.
+
+### 5. Inspect the shift table
+
+Open:
+
+```text
+subpixel_shifts.csv
+```
+
+Check that:
+
+- only interior odd rows are listed;
+- shifts are finite;
+- shift magnitude remains within the allowed registration range;
+- the smoothed profile varies gradually rather than jumping randomly;
+- correlation gain is recorded.
+
+### 6. Confirm array dimensions
+
+```powershell
+python -c "import numpy as np; a=np.load(r'Playtest_model\Testmodel_NCo_7_SW\prototype_output\total_counts_subpixel_registered.npy'); print(a.shape, a.dtype)"
+```
+
+For the validated playtest, the expected shape is:
+
+```text
+(301, 302)
+```
+
+If full cubes were saved:
+
+```powershell
+python -c "import numpy as np; a=np.load(r'Playtest_model\Testmodel_NCo_7_SW\prototype_output\sdd_cube_subpixel_registered.npy', mmap_mode='r'); print(a.shape, a.dtype)"
+```
+
+Expected playtest shape:
+
+```text
+(301, 302, 256)
+```
+
+### 7. Run automated tests
+
+```powershell
+python -m pytest -q
+```
+
+All tests should pass before accepting a code change.
+
+---
+
+## Use from Python
+
+## Complete processing example
+
+```python
+from pathlib import Path
+
+from transform_pipeline.pipeline import (
+    process_sdd_scan,
+    write_pipeline_outputs,
+)
+
+
+scan_dir = Path(
+    r"D:\path\to\scan_directory"
+)
+
+reconstruction, registration = process_sdd_scan(
+    scan_dir=scan_dir,
+    sdd_filename="sdd1_0.bin",
+    h5_filename=None,
+)
+
+outputs = write_pipeline_outputs(
+    reconstruction,
+    registration,
+    output_dir=scan_dir / "prototype_output",
+    save_cubes=True,
+)
+
+print(outputs)
+```
+
+## Use the repository playtest path
+
+```python
+from transform_pipeline.io.readers.cls_sgm import (
+    default_playtest_scan_dir,
+)
+from transform_pipeline.pipeline import (
+    process_sdd_scan,
+    write_pipeline_outputs,
+)
+
+
+scan_dir = default_playtest_scan_dir()
+
+reconstruction, registration = process_sdd_scan()
+
+outputs = write_pipeline_outputs(
+    reconstruction,
+    registration,
+    output_dir=scan_dir / "prototype_output",
+    save_cubes=False,
+)
+```
+
+## Access reconstruction products in memory
+
+```python
+geometry = reconstruction.geometry
+cube_before_registration = reconstruction.cube
+total_before_registration = reconstruction.total_counts
+
+print(geometry.rows)
+print(geometry.columns)
+print(geometry.x_axis)
+print(geometry.y_axis)
+print(cube_before_registration.shape)
+```
+
+## Access registration products in memory
+
+```python
+cube_after_registration = registration.cube
+total_after_registration = registration.total_counts
+validity_mask = registration.validity_mask
+shift_measurements = registration.shifts
+
+print(cube_after_registration.shape)
+print(total_after_registration.shape)
+print(validity_mask.shape)
+```
+
+## Inspect individual shifts
+
+```python
+for measurement in registration.shifts[:5]:
+    print(
+        measurement.row,
+        measurement.raw_shift,
+        measurement.smoothed_shift,
+        measurement.correlation_gain,
+    )
+```
+
+---
+
+## Troubleshooting
+
+## `No module named transform_pipeline`
+
+Cause:
+
+- package not installed in the active environment;
+- command executed from an unrelated environment;
+- repository root not on the import path.
+
+Fix:
+
+```powershell
+python -m pip install -e ".[test]"
+```
+
+Verify:
+
+```powershell
+python -c "import transform_pipeline; print(transform_pipeline.__file__)"
+```
+
+## Wrong Python interpreter
+
+List installed interpreters:
+
+```powershell
+py -0p
+```
+
+Check the current interpreter:
+
+```powershell
+python --version
+python -c "import sys; print(sys.executable)"
+```
+
+Use Python 3.14 explicitly when needed:
+
+```powershell
+py -3.14 -m transform_pipeline.cli
+```
+
+## Default playtest directory not found
+
+Expected path:
+
+```text
+<repository root>/Playtest_model/Testmodel_NCo_7_SW
+```
+
+Check it:
+
+```powershell
+Test-Path "Playtest_model\Testmodel_NCo_7_SW"
+```
+
+Expected:
+
+```text
+True
+```
+
+Alternatively, provide a scan directory explicitly.
+
+## No HDF5 file found
+
+Confirm the scan directory contains a `.h5` file:
+
+```powershell
+Get-ChildItem "D:\path\to\scan_directory" -Filter "*.h5"
+```
+
+## More than one HDF5 file found
+
+Select one explicitly:
+
+```powershell
+python -m transform_pipeline.cli `
+    "D:\path\to\scan_directory" `
+    --h5 "selected_scan.h5"
+```
+
+## SDD file not found
+
+Confirm the detector filename:
+
+```powershell
+Get-ChildItem "D:\path\to\scan_directory" -Filter "sdd*.bin"
+```
+
+Then select the correct file with `--sdd`.
+
+## SDD value-count mismatch
+
+This means the selected binary cannot be reshaped under the inferred raster geometry and current 256-channel assumption.
+
+Check:
+
+- HDF5 and SDD originated from the same scan;
+- the selected binary is complete;
+- channel count is 256;
+- dtype is `<u4`;
+- no header or extra records are present;
+- coordinate count matches detector-spectrum count.
+
+Do not bypass this error by forcing a reshape.
+
+## Unexpected X direction
+
+The coordinate sequence does not match the expected alternating serpentine pattern.
+
+Possible causes include:
+
+- another scan mode;
+- duplicated coordinates;
+- partial acquisition;
+- flyback records;
+- a coordinate dataset that does not correspond to the SDD sequence.
+
+Use the scripts under `development/diagnostics` before changing production assumptions.
+
+## TIFF appears entirely white
+
+The quantitative TIFF is floating point and may not be automatically contrast-stretched.
+
+Open:
+
+```text
+total_counts_subpixel_registered_preview.png
+```
+
+or manually adjust the display range in scientific-image software.
+
+Do not replace the analytical TIFF with an 8-bit image for convenience.
+
+## Black pixels at one horizontal edge
+
+These pixels are expected when subpixel shifting exposes positions not supported by acquired samples.
+
+Use:
+
+```text
+subpixel_validity_mask.tif
+```
+
+to identify valid pixels.
+
+## Pipeline runs but row drift remains
+
+Review:
+
+```text
+subpixel_shifts.csv
+```
+
+Then inspect whether:
+
+- shifts reach the configured maximum;
+- correlation gains are weak;
+- the signal lacks spatial texture;
+- total counts are a poor registration signal for that acquisition;
+- displacement is not exclusively horizontal;
+- even rows are not a stable reference.
+
+Do not add manual integer correction regions to production code without a documented diagnostic basis.
+
+## `pytest` finds no tests
+
+Run from the repository root:
+
+```powershell
+python -m pytest -q
+```
+
+Confirm that `pyproject.toml` contains:
+
+```toml
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+```
+
+## Generated files appear in Git status
+
+Check `.gitignore` and confirm that raw data and generated products remain ignored.
+
+Examples:
+
+```powershell
+git check-ignore -v -- "Playtest_model\Testmodel_NCo_7_SW\sdd1_0.bin"
+git check-ignore -v -- "Playtest_model\Testmodel_NCo_7_SW\prototype_output"
+```
+
+---
+
+## Tests
+
+Run the test suite:
+
+```powershell
+python -m pytest -q
+```
+
+The current tests cover:
+
+### Raster behavior
+
+- alternating-row reversal;
+- rectangular geometry inference;
+- expected X and Y axes for a synthetic serpentine raster.
+
+### Repository path behavior
+
+- repository-root resolution;
+- default playtest path:
+
+  ```text
+  Playtest_model/Testmodel_NCo_7_SW
+  ```
+
+### Recommended future tests
+
+The current test suite is intentionally small. Future additions should cover:
+
+- temporary HDF5 and binary end-to-end reconstruction;
+- incorrect SDD count rejection;
+- irregular row-length rejection;
+- nonmonotonic Y rejection;
+- known synthetic fractional-shift recovery;
+- preservation of even rows;
+- invalid-edge mask behavior;
+- equal shift application across all detector channels;
+- output-file creation;
+- CLI argument handling.
+
+---
+
+## Development diagnostics
+
+The production pipeline is intentionally narrower than the diagnostic history used to derive it.
+
+Retained diagnostic files include:
+
+```text
+development/diagnostics/
+├── sdd1_0_diagnostic.txt
+├── xy_raster_geometry_diag.py
+├── sdd1_row_shift_diagnostic.py
+└── sdd1_subpixel_row_shift_diagnostic.py
+```
+
+### `sdd1_0_diagnostic.txt`
+
+Records the binary-format investigation that supported the `<u4`, 256-channel interpretation.
+
+### `xy_raster_geometry_diag.py`
+
+Examines:
+
+- coordinate ranges;
+- consecutive X/Y differences;
+- candidate row boundaries;
+- row lengths;
+- scan direction;
+- endpoint transitions.
+
+### `sdd1_row_shift_diagnostic.py`
+
+Tests integer shifts and helped establish that:
+
+- the artifact was direction-dependent;
+- whole-pixel symmetric correction was inappropriate;
+- even and odd measurements described the same relative mismatch from opposite viewpoints.
+
+### `sdd1_subpixel_row_shift_diagnostic.py`
+
+Measures the continuous odd-row displacement profile and generates:
+
+- row-shift CSV;
+- shift-profile plot;
+- score heatmap;
+- diagnostic summary.
+
+These scripts may contain acquisition-specific configuration placeholders. Review their configuration blocks before running them.
+
+---
+
+## Data management and Git
+
+Raw acquisitions and generated analytical products can be large. They should not be committed to ordinary Git history.
+
+The repository is configured to ignore appropriate patterns such as:
+
+```text
+*.h5
+*.bin
+*.npy
+*.npz
+*.tif
+*.tiff
+prototype_output/
+*.egg-info/
+__pycache__/
+.pytest_cache/
+.idea/
+```
+
+Recommended Git content:
+
+- source code;
+- tests;
+- configuration;
+- small documentation;
+- schemas;
+- small, nonrestricted metadata;
+- diagnostic methodology;
+- release notes.
+
+Recommended external-data content:
+
+- raw HDF5 acquisitions;
+- SDD binaries;
+- full spectral cubes;
+- generated TIFF products;
+- large previews and intermediate outputs.
+
+Before committing:
+
+```powershell
+git status --short
+```
+
+Before pushing:
+
+```powershell
+python -m pytest -q
+git --no-pager log --oneline -3
+```
+
+---
+
+## Known limitations
+
+### One detector at a time
+
+The CLI selects one SDD binary. It does not combine detector quadrants or perform cross-detector calibration.
+
+### Fixed detector interpretation
+
+The production reader assumes:
+
+```text
+little-endian uint32
+256 channels
+```
+
+### Registration uses total counts
+
+The registration signal is the sum across all detector channels. This may not be optimal for acquisitions where a spectral ROI provides stronger spatial contrast.
+
+### Even-row anchoring
+
+The current model holds even rows fixed and moves odd rows. This is a relative-registration choice, not proof that even rows represent absolute ground truth.
+
+### Horizontal registration only
+
+The method corrects X displacement. It does not estimate Y displacement, rotation, shear, nonlinear warping within a row, or specimen motion independent of scan direction.
+
+### Linear interpolation
+
+Linear interpolation changes integer counts into floating-point values and introduces channel-wise interpolation. The method preserves channel alignment but does not preserve the original integer-valued detector samples at shifted positions.
+
+### Edge data loss
+
+Subpixel shifting creates invalid pixels at one horizontal edge. The pipeline marks these pixels rather than filling them.
+
+### No calibrated GeoTIFF
+
+X and Y axes are stored separately. The output TIFF has no validated CRS, affine transform, or documented mapping to a geographic reference frame.
+
+### No automatic scientific acceptance threshold
+
+The software records correlation information but does not automatically declare a reconstruction scientifically acceptable. Visual and quantitative review remain required.
+
+### Playtest-specific validation
+
+The prototype has been validated against the included local playtest acquisition. Other scan modes may require additional format diagnostics.
+
+---
+
+## Roadmap
+
+Potential next steps, in dependency order:
+
+1. Expand automated end-to-end tests with temporary HDF5/BIN fixtures.
+2. Add structured run metadata and a machine-readable processing manifest.
+3. Parameterize channel count and binary dtype explicitly.
+4. Add SDD2-SDD4 processing and detector-combination rules.
+5. Parse and identify MCC flyer channels.
+6. Add I0 normalization.
+7. Add spectral energy/channel calibration.
+8. Add spectral ROI extraction and energy-resolved raster export.
+9. Add registration-quality plots to the production output.
+10. Establish a scientifically justified coordinate model.
+11. Implement validated GeoTIFF export.
+12. Add NXstxm or other interoperable scientific export where appropriate.
+13. Add CLI configuration files for reproducible batch processing.
+14. Add release versioning and citation metadata.
+
+---
+
+## Reproducibility record
+
+A reproducible processing record should capture at least:
+
+- repository commit hash;
+- Python version;
+- package versions;
+- HDF5 filename;
+- SDD filename;
+- input file sizes and checksums;
+- coordinate dataset paths;
+- inferred raster dimensions;
+- detector dtype;
+- channel count;
+- candidate shift range;
+- shift step;
+- excluded edge margin;
+- smoothing sigma;
+- applied row shifts;
+- output filenames;
+- validity-mask statistics.
+
+Record the current commit:
+
+```powershell
+git rev-parse HEAD
+```
+
+Record the environment:
+
+```powershell
+python --version
+python -m pip freeze > environment-lock.txt
+```
+
+The current production pipeline does not yet write a complete processing manifest automatically. Until that feature is implemented, retain the shift CSV and record the commit and environment alongside analytical outputs.
+
+---
+
+## Citation and acknowledgement
+
+A formal software citation has not yet been defined in this repository.
+
+Until a release and citation record are created, users should record:
+
+- repository name;
+- repository URL;
+- commit hash;
+- access date;
+- software authors or maintainers;
+- CLS SGM beamline acknowledgement appropriate to the associated experiment;
+- related dataset or publication identifiers where available.
+
+Do not cite the repository as a validated GeoTIFF converter until GeoTIFF export and coordinate-reference behavior are implemented and documented.
+
+---
+
+## License
+
+See [`LICENSE`](LICENSE) for the repository license.
