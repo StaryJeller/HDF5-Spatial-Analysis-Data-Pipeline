@@ -142,8 +142,6 @@ dmypy.json
 prototype_output/
 *.npy
 
-#generated bloat
-*.egg-info/
 # Python
 .ruff_cache/
 
@@ -164,6 +162,52 @@ Playtest_model/**/prototype_output/
 *.tif
 *.tiff
 
-# Temporary repository review files
-REPOSITORY_REVIEW.txt
-HDF5-to-GeoTiff-repo-review.zip
+# Raw acquisitions
+Playtest_model/**/*.hdf5
+
+# Generated analytical arrays and images
+Playtest_model/**/*.npy
+Playtest_model/**/*.npz
+Playtest_model/**/*.tif
+Playtest_model/**/*.tiff
+Playtest_model/**/*.png
+Playtest_model/**/*.jpg
+Playtest_model/**/*.jpeg
+
+# Local exploratory outputs
+Playtest_model/**/*_diagnostic.txt
+Playtest_model/**/*_summary.txt
+Playtest_model/**/*_diagnostic.csv
+Playtest_model/**/*_profiles.csv
+
+# Track the lightweight playtest documentation
+!Playtest_model/**/README.md
+!Playtest_model/**/manifest.json
+!Playtest_model/**/expected_outputs.txt
+Playtest_model/**
+!Playtest_model/README.md
+!Playtest_model/Testmodel_1_quadrant/
+!Playtest_model/Testmodel_1_quadrant/README.md
+!Playtest_model/Testmodel_4_quadrant/
+!Playtest_model/Testmodel_4_quadrant/README.md
+
+# Local pipeline outputs outside Playtest_model
+md_output/
+**/prototype_output/
+**/stitched_output/
+
+# IDE and operating-system metadata
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local maintenance reports
+repository_cleanup_audit.json
+repository_cleanup_plan.json
+
+# Applied patch delivery artifacts
+*_patch/
+*_hotfix/
+*_patch.zip
+*_hotfix.zip
